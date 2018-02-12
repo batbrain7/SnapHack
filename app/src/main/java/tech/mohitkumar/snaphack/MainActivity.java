@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
     private static final int PERMISSION_CODE = 1;
     private static final String TAG = "SnapHack";
     int width,height;
-    Button button;
     ImageView imageView;
     private BroadcastReceiver broadcastReceiver;
 
@@ -55,6 +54,8 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.media.VOLUME_CHANGED_ACTION");
+        imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
+
 
         broadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -65,19 +66,16 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
                     int volume = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE",0);
 
                     Log.i(TAG, "volume = " + volume);
-                    Toast.makeText(MainActivity.this,"Bob Vagene Captured bitch",Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this,"Captured bitch",Toast.LENGTH_SHORT).show();
 
-                    imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,100);
                     surface = imageReader.getSurface();
                     imageReader.setOnImageAvailableListener(MainActivity.this,null);
                     takeScreenShot();
-
                 }
             }
         };
 
         this.registerReceiver(broadcastReceiver,intentFilter);
-
 
         imageView = findViewById(R.id.image_view);
 
@@ -144,8 +142,8 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
 
         String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
         Log.d(TAG, "onImageAvailable: " + encoded);
-        sendEmail(encoded);
-        imageReader.close();
+        // sendEmail(encoded);
+         imageReader.close();
     }
 
     @Override
