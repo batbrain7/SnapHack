@@ -11,7 +11,11 @@
         android:layout_height="wrap_content"
         android:text="Click to take screenshot"
         android:id="@+id/but_ton"
-        android:layout_centerInParent="true"
         />
-
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/but_ton"
+        android:id="@+id/image_view"
+        />
 </RelativeLayout>

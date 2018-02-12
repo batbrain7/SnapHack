@@ -12,13 +12,16 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 import tech.mohitkumar.snaphack.Service.ScreenService;
@@ -35,6 +38,7 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
     private static final String TAG = "SnapHack";
     int width,height;
     Button button;
+    ImageView imageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,17 +46,21 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
         setContentView(R.layout.activity_main);
 
         DisplayMetrics dp = new DisplayMetrics();
-        width = getWindowManager().getDefaultDisplay().getWidth();
-        height = getWindowManager().getDefaultDisplay().getHeight();
-        imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
-        surface = imageReader.getSurface();
+        getWindowManager().getDefaultDisplay().getMetrics(dp);
+        width = dp.widthPixels;
+        height = dp.heightPixels;
 
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
+        imageView = findViewById(R.id.image_view);
         button = findViewById(R.id.but_ton);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.d(TAG, "onClick: " + "Clicked");
+                imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
+                surface = imageReader.getSurface();
+                imageReader.setOnImageAvailableListener(MainActivity.this,null);
                 takeScreenShot();
             }
         });
@@ -60,19 +68,23 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
     }
 
     private void takeScreenShot() {
+        Log.d(TAG, "takeScreenShot: " + "taking ss");
         if (surface == null) {
+            Log.d(TAG, "takeScreenShot: " + " Surface is null");
             return;
         }
         if (mediaProjection == null) {
+            Log.d(TAG, "takeScreenShot: " + "mProjection is null");
             startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(),
                     PERMISSION_CODE);
             return;
         }
+        Log.d(TAG, "takeScreenShot: " + "Projection is not null");
         virtualDisplay = createVirtualDisplay();
     }
 
     private VirtualDisplay createVirtualDisplay() {
-        return mediaProjection.createVirtualDisplay("ScreenSharingDemo",
+        return mediaProjection.createVirtualDisplay("&lt;SnapHack&gt;",
                 width, height, 50,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 surface, null , null);
@@ -91,11 +103,13 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
             return;
         }
         mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+        Log.d(TAG, "onActivityResult: " + "mProjection done");
         virtualDisplay = createVirtualDisplay();
     }
 
     @Override
     public void onImageAvailable(ImageReader reader) {
+        Log.d(TAG, "onImageAvailable: " + "In here");
         Image image = reader.acquireLatestImage();
         final Image.Plane[] planes = image.getPlanes();
         final ByteBuffer buffer = planes[0].getBuffer();
@@ -106,5 +120,33 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
         Bitmap bitmap = Bitmap.createBitmap(width+rowPadding/pixelStride, height, Bitmap.Config.RGB_565);
         bitmap.copyPixelsFromBuffer(buffer);
         //Do whatever you want to do with the bitmap now. This is the required screenshot.
+
+        imageView.setImageBitmap(bitmap);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 20, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream .toByteArray();
+
+        String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+        Log.d(TAG, "onImageAvailable: " + encoded);
+        sendEmail(encoded);
+        imageReader.close();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+            mediaProjection = null;
+        }
+    }
+
+    public void sendEmail(String subject) {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_EMAIL, "kumar.mohit983@gmail.com");
+        intent.putExtra(Intent.EXTRA_SUBJECT, "Image");
+        intent.putExtra(Intent.EXTRA_TEXT, subject);
+        startActivity(Intent.createChooser(intent, "Send Email"));
     }
 }
