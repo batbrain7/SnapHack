@@ -1,7 +1,9 @@
 package tech.mohitkumar.snaphack;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.hardware.display.DisplayManager;
@@ -24,8 +26,6 @@ import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
-import tech.mohitkumar.snaphack.Service.ScreenService;
-
 public class MainActivity extends AppCompatActivity implements ImageReader.OnImageAvailableListener{
 
     ImageReader imageReader;
@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
     int width,height;
     Button button;
     ImageView imageView;
+    private BroadcastReceiver broadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,18 +53,33 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
 
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
-        imageView = findViewById(R.id.image_view);
-        button = findViewById(R.id.but_ton);
-        button.setOnClickListener(new View.OnClickListener() {
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("android.media.VOLUME_CHANGED_ACTION");
+
+        broadcastReceiver = new BroadcastReceiver() {
             @Override
-            public void onClick(View v) {
-                Log.d(TAG, "onClick: " + "Clicked");
-                imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
-                surface = imageReader.getSurface();
-                imageReader.setOnImageAvailableListener(MainActivity.this,null);
-                takeScreenShot();
+            public void onReceive(Context context, Intent intent) {
+
+                if ("android.media.VOLUME_CHANGED_ACTION".equals(intent.getAction())) {
+
+                    int volume = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE",0);
+
+                    Log.i(TAG, "volume = " + volume);
+                    Toast.makeText(MainActivity.this,"Bob Vagene Captured bitch",Toast.LENGTH_LONG).show();
+
+                    imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,100);
+                    surface = imageReader.getSurface();
+                    imageReader.setOnImageAvailableListener(MainActivity.this,null);
+                    takeScreenShot();
+
+                }
             }
-        });
+        };
+
+        this.registerReceiver(broadcastReceiver,intentFilter);
+
+
+        imageView = findViewById(R.id.image_view);
 
     }
 
@@ -149,4 +165,6 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
         intent.putExtra(Intent.EXTRA_TEXT, subject);
         startActivity(Intent.createChooser(intent, "Send Email"));
     }
+
+
 }
