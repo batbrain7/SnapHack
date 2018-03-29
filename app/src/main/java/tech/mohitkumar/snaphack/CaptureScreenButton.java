@@ -30,6 +30,7 @@ import android.widget.RelativeLayout;
 
 import com.andremion.counterfab.CounterFab;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
@@ -40,12 +41,15 @@ import java.nio.ByteBuffer;
 
 public class CaptureScreenButton extends Service implements ImageReader.OnImageAvailableListener{
 
-    private WindowManager windowManager;
+
+    private WindowManager mWindowManager;
     private View mOverlayView;
-    int mWidth;
     CounterFab counterFab;
-    boolean activity_background;
     private static final String TAG = "TAG";
+
+
+    final static String MY_ACTION = "MY_ACTION";
+
 
     ImageReader imageReader;
     VirtualDisplay virtualDisplay;
@@ -54,74 +58,14 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
     Surface surface;
     int width,height;
 
+    Bitmap bitmap;
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-
-        if (intent!=null) {
-            activity_background = intent.getBooleanExtra("activity_background",false);
-        }
-
-        if (mOverlayView == null) {
-
-            mOverlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout,null);
-
-            final WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,WindowManager.LayoutParams.TYPE_PHONE,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    PixelFormat.TRANSLUCENT);
-
-            params.gravity = Gravity.TOP|Gravity.LEFT;
-            params.x = 0;
-            params.y = 100;
-
-            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-            windowManager.addView(mOverlayView, params);
-
-            DisplayMetrics dp = new DisplayMetrics();
-            windowManager.getDefaultDisplay().getMetrics(dp);
-            width = dp.widthPixels;
-            height = dp.heightPixels;
-
-            Display display = windowManager.getDefaultDisplay();
-            final Point size = new Point();
-            display.getSize(size);
-
-            counterFab = mOverlayView.findViewById(R.id.fabHead);
-        //    counterFab.setCount(1);
-
-            final RelativeLayout layout = mOverlayView.findViewById(R.id.layout);
-            ViewTreeObserver vto = layout.getViewTreeObserver();
-            vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-                    layout.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                    int width = layout.getMeasuredWidth();
-
-                    mWidth = size.x - width;
-                }
-            });
-
-            counterFab.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-                    imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
-                    surface = imageReader.getSurface();
-                    imageReader.setOnImageAvailableListener((ImageReader.OnImageAvailableListener) getApplicationContext(),null);
-                }
-            });
-
-
-        } else {
-
-        }
-        return super.onStartCommand(intent, flags, startId);
-    }
 
     @Override
     public void onCreate() {
@@ -129,19 +73,88 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
 
         setTheme(R.style.AppTheme);
 
-    }
+        mOverlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null);
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (mOverlayView != null)
-            windowManager.removeView(mOverlayView);
-        if (mediaProjection != null) {
-            mediaProjection.stop();
-            mediaProjection = null;
-        }
-    }
 
+        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+
+
+        //Specify the view position
+        params.gravity = Gravity.TOP | Gravity.LEFT;        //Initially view will be added to top-left corner
+        params.x = 0;
+        params.y = 100;
+
+
+        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        mWindowManager.addView(mOverlayView, params);
+
+        DisplayMetrics dp = new DisplayMetrics();
+        mWindowManager.getDefaultDisplay().getMetrics(dp);
+        width = dp.widthPixels;
+        height = dp.heightPixels;
+
+
+        counterFab = (CounterFab) mOverlayView.findViewById(R.id.fabHead);
+        counterFab.setCount(1);
+
+
+
+        counterFab.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX;
+            private int initialY;
+            private float initialTouchX;
+            private float initialTouchY;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+
+                        //remember the initial position.
+                        initialX = params.x;
+                        initialY = params.y;
+
+
+                        //get the touch location
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+
+
+                        return true;
+                    case MotionEvent.ACTION_UP:
+
+                        //Add code for launching application and positioning the widget to nearest edge.
+
+
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+
+
+                        float Xdiff = Math.round(event.getRawX() - initialTouchX);
+                        float Ydiff = Math.round(event.getRawY() - initialTouchY);
+
+
+                        //Calculate the X and Y coordinates of the view.
+                        params.x = initialX + (int) Xdiff;
+                        params.y = initialY + (int) Ydiff;
+
+                        //Update the layout with new X & Y coordinates
+                        mWindowManager.updateViewLayout(mOverlayView, params);
+
+
+                        return true;
+                }
+                return false;
+            }
+        });
+
+
+    }
 
     private void takeScreenShot() {
         Log.d(TAG, "takeScreenShot: " + "taking ss");
@@ -151,8 +164,8 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
         }
         if (mediaProjection == null) {
             Log.d(TAG, "takeScreenShot: " + "mProjection is null");
-           // startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(),
-           //         PERMISSION_CODE);
+            // startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(),
+            //         PERMISSION_CODE);
             mediaProjection = mediaProjectionManager.getMediaProjection(-1, mediaProjectionManager.createScreenCaptureIntent());
             virtualDisplay = createVirtualDisplay();
             return;
@@ -168,6 +181,13 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
                 surface, null , null);
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOverlayView != null)
+            mWindowManager.removeView(mOverlayView);
+    }
+
 
     @Override
     public void onImageAvailable(ImageReader reader) {
@@ -178,7 +198,7 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
         int rowStride = planes[0].getRowStride();
         int rowPadding = rowStride - pixelStride * width;
         // create bitmap
-        final Bitmap bitmap = Bitmap.createBitmap(width+rowPadding/pixelStride, height, Bitmap.Config.RGB_565);
+        bitmap = Bitmap.createBitmap(width+rowPadding/pixelStride, height, Bitmap.Config.RGB_565);
         bitmap.copyPixelsFromBuffer(buffer);
         //Do whatever you want to do with the bitmap now. This is the required screenshot.
         imageReader.close();
@@ -197,6 +217,34 @@ public class CaptureScreenButton extends Service implements ImageReader.OnImageA
         } catch (Exception e) {
             e.printStackTrace();
         }
-      //  imageView.setImageBitmap(bitmap);
+        //  imageView.setImageBitmap(bitmap);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        final Intent intent1 = new Intent();
+        intent1.setAction(MY_ACTION);
+
+        counterFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                imageReader = ImageReader.newInstance(width,height, ImageFormat.RGB_565,2);
+                surface = imageReader.getSurface();
+                imageReader.setOnImageAvailableListener((ImageReader.OnImageAvailableListener) getApplicationContext(),null);
+                takeScreenShot();
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                byte[] byteArray = stream.toByteArray();
+
+                intent1.putExtra("image",byteArray);
+                sendBroadcast(intent1);
+
+            }
+        });
+
+
+
+        return super.onStartCommand(intent, flags, startId);
     }
 }
