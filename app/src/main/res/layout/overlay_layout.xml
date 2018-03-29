@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:id="@+id/layout"
+    android:layout_height="wrap_content">
+
+    <com.andremion.counterfab.CounterFab
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/fabHead"
+        android:src="@android:drawable/ic_menu_camera"
+        />
+</RelativeLayout>
