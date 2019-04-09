@@ -23,11 +23,6 @@ public class ButtonService extends Service {
         public void onReceive(Context context, Intent intent) {
             if ("android.media.VOLUME_CHANGED_ACTION".equals(intent.getAction())) {
 
-                int volume = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE",0);
-
-                if (volumePrev  < volume) {
-                    Log.i(TAG, "You have pressed volume up button");
-                }
             }
         }
     };
