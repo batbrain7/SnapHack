@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
     ImageView imageView;
     private BroadcastReceiver broadcastReceiver;
     SharedPreferences pref;
+    private IntentFilter intentFilter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,24 +52,34 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
 
         pref = MainActivity.this.getSharedPreferences("MyPref", 0);
 
+        getWindowDimens();
+        initIntentFilter();
+        registerReceiver();
+        this.registerReceiver(broadcastReceiver, intentFilter);
+        imageView = findViewById(R.id.image_view);
+
+    }
+
+    public void getWindowDimens() {
         DisplayMetrics dp = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dp);
         width = dp.widthPixels;
         height = dp.heightPixels;
-
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+    }
 
-        IntentFilter intentFilter = new IntentFilter();
+    public void initIntentFilter() {
+        intentFilter = new IntentFilter();
         intentFilter.addAction("android.media.VOLUME_CHANGED_ACTION");
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3);
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
+    }
 
-
+    private void registerReceiver() {
         broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
                 if ("android.media.VOLUME_CHANGED_ACTION".equals(intent.getAction())) {
-
 
                     //  Log.i(TAG, "volume = " + volume);
                     Toast.makeText(MainActivity.this, "Captured", Toast.LENGTH_SHORT).show();
@@ -79,10 +90,6 @@ public class MainActivity extends AppCompatActivity implements ImageReader.OnIma
                 }
             }
         };
-
-        this.registerReceiver(broadcastReceiver, intentFilter);
-
-        imageView = findViewById(R.id.image_view);
 
     }
 
